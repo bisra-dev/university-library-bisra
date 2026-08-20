@@ -1,4 +1,5 @@
 import { Client as WorkFlowClient } from "@upstash/workflow";
+import { Client as QstashClient, resend } from "@upstash/qstash";
 import config from "@/lib/config";
 
 export const workFlowClient = new WorkFlowClient({
@@ -6,7 +7,10 @@ export const workFlowClient = new WorkFlowClient({
   token: config.env.upstash.qstashToken,
 });
 
-// TODO: replace with real Resend integration later
+const qstashClient = new QstashClient({
+  token: config.env.upstash.qstashToken,
+});
+
 export const sendEmail = async ({
   email,
   subject,
@@ -16,7 +20,16 @@ export const sendEmail = async ({
   subject: string;
   message: string;
 }) => {
-  console.log(`[stub] Would send email to ${email}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Message: ${message}`);
+  await qstashClient.publishJSON({
+    api: {
+      name: "email",
+      provider: resend({ token: config.env.resendToken }),
+    },
+    body: {
+      from: "BookWise <onboarding@resend.dev>",
+      to: [email],
+      subject,
+      html: `<p>${message}</p>`,
+    },
+  });
 };
